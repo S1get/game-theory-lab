@@ -92,6 +92,14 @@ function broadcastViewers() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Эфир считается, только пока есть зрители: без них цикл стоит на паузе
+// и не тратит процессор. Первый подключившийся будит его.
+let wakeLive = null;
+function waitForViewers() {
+  if (live.clients.size > 0) return Promise.resolve();
+  return new Promise((resolve) => { wakeLive = resolve; });
+}
+
 // Каждый эфир — новый набор параметров, чтобы турниры отличались
 function liveConfig(k) {
   const rnd = GT.rng(Date.now() ^ (k * 2654435761));
@@ -132,6 +140,7 @@ async function liveLoop() {
       for (const pair of schedule) {
         const sa = bots.find((b) => b.id === cfg.teams[pair.a].bots[game.kind]);
         const sb = bots.find((b) => b.id === cfg.teams[pair.b].bots[game.kind]);
+        await waitForViewers();
         const m = GT.runMatch(game, sa, sb, { seed: cfg.seed + k, noise: cfg.noise, hidden: cfg.hidden });
         const s = GT.summary(m);
         const r = { k, gameId, a: pair.a, b: pair.b, score: s.score, avg: s.avg, winner: s.winner, units: s.units };
@@ -146,6 +155,7 @@ async function liveLoop() {
     t.nextAt = t.finishedAt + LIVE_PAUSE_MS;
     broadcast({ type: 'done', finishedAt: t.finishedAt, nextAt: t.nextAt });
     await sleep(LIVE_PAUSE_MS);
+    await waitForViewers();
   }
 }
 
@@ -159,6 +169,7 @@ function handleLive(req, res) {
   res.write('retry: 3000\n\n');
   res.write(`data: ${JSON.stringify({ type: 'snapshot', tournament: live.tournament, viewers: live.clients.size + 1 })}\n\n`);
   live.clients.add(res);
+  if (wakeLive) { const w = wakeLive; wakeLive = null; w(); }
   broadcastViewers();
   req.on('close', () => {
     live.clients.delete(res);
@@ -221,7 +232,7 @@ const server = http.createServer((req, res) => {
       ok: true,
       uptimeSec: Math.round((Date.now() - STARTED_AT) / 1000),
       viewers: live.clients.size,
-      liveTournament: live.tournament ? { id: live.tournament.id, status: live.tournament.status, played: live.tournament.results.length, total: live.tournament.total } : null,
+      paused: live.clients.size === 0, liveTournament: live.tournament ? { id: live.tournament.id, status: live.tournament.status, played: live.tournament.results.length, total: live.tournament.total } : null,
       keepalive: { enabled: keepalive.enabled, intervalMin: keepalive.intervalMin, lastPingAt: keepalive.lastPingAt, lastStatus: keepalive.lastStatus },
     });
   }
