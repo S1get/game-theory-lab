@@ -1,0 +1,15 @@
+{
+  "name": "game-theory-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Лаборатория теории игр: турниры ботов в реальном времени",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/engine.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

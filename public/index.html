@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Сайт не должен попадать в поисковики -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta name="yandex" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>GTLab — турниры по теории игр</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a class="skip" href="#app">Перейти к содержимому</a>
+
+  <header class="topbar" id="topbar">
+    <div class="container topbar-in">
+      <a class="logo" href="#/">GTLab</a>
+      <nav class="nav" id="nav">
+        <a href="#/learn" data-nav="learn">Уроки</a>
+        <a href="#/live" data-nav="live">Эфир</a>
+        <a href="#/tournament" data-nav="tournament">Турниры</a>
+        <a href="#/arena" data-nav="arena">Арена</a>
+        <a href="#/games" data-nav="games">Игры</a>
+        <a href="#/sandbox" data-nav="sandbox">Песочница</a>
+        <a href="#/help" data-nav="help">Справка</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="pill" id="server-pill" title="Состояние сервера"><span class="dot"></span><span>сервер…</span></span>
+        <button class="burger" id="burger" aria-label="Меню">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <footer class="footer">
+    <div class="container footer-in">
+      <span class="comment">// учебный проект · закрыт от поисковиков</span>
+      <button class="toggle" id="anim-toggle">[x] анимации</button>
+      <span class="made"><span class="logo-sq">GT<br>LAB</span>Лаборатория теории игр</span>
+    </div>
+  </footer>
+
+  <script src="/js/games.js"></script>
+  <script src="/js/strategies.js"></script>
+  <script src="/js/engine.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages.js"></script>
+  <script src="/js/learn.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

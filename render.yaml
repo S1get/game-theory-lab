@@ -1,0 +1,16 @@
+# Render Blueprint: New → Blueprint → выбрать этот репозиторий
+services:
+  - type: web
+    name: game-theory-lab
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Антислип: сервер пингует свой публичный адрес (RENDER_EXTERNAL_URL задаётся автоматически)
+      - key: KEEPALIVE_INTERVAL_MIN
+        value: "10"
+      - key: NODE_VERSION
+        value: "22"
