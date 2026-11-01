@@ -542,16 +542,22 @@
   );
 
   const theirOffers = (c) => c.state.deals.filter((d) => !d.iProposed).map((d) => d.offer);
-  const theirThreshold = (c) => { const d = c.state.deals.filter((x) => x.iProposed); return d.length ? d[d.length - 1].threshold : null; };
+  // Порог соперника скрыт: нащупываем его по отказам и согласию на свои предложения
+  const probeOffer = (c, start, floor, up, down) => {
+    const mine = c.state.deals.filter((x) => x.iProposed);
+    if (!mine.length) return start;
+    const last = mine[mine.length - 1];
+    return clamp(last.accepted ? last.offer - down : last.offer + up, floor, 100);
+  };
   ultimatum.push(
-    { id: 'adaptive', name: 'Адаптивный', desc: 'Видит в истории, сколько соперник требует, и предлагает ровно это + 5 (не меньше 15). Принимает от 20, но если соперник сам предлагает меньше 20 — требует 30.',
+    { id: 'adaptive', name: 'Адаптивный', desc: 'Нащупывает порог соперника: после согласия снижает предложение на 2, после отказа повышает на 6 (не меньше 15). Принимает от 20, но если соперник сам предлагает меньше 20 — требует 30.',
       play: (c) => {
-        const t = theirThreshold(c), offers = theirOffers(c);
+        const offers = theirOffers(c);
         const stingy = offers.length >= 3 && avg(offers.slice(-3)) < 20;
-        return { offer: t == null ? 45 : Math.max(15, t + 5), accept: stingy ? 30 : 20 };
+        return { offer: probeOffer(c, 45, 15, 6, 2), accept: stingy ? 30 : 20 };
       } },
-    { id: 'mind_reader', name: 'Знающий порог', desc: 'Предлагает ровно тот минимум, который соперник требовал в прошлый раз, — ни монетой больше. Принимает от 30.',
-      play: (c) => { const t = theirThreshold(c); return { offer: t == null ? 40 : t, accept: 30 }; } },
+    { id: 'mind_reader', name: 'Нащупывающий', desc: 'Не знает порог соперника и ищет его: после согласия снижает предложение на 3, после отказа повышает на 5. Принимает от 30.',
+      play: (c) => ({ offer: probeOffer(c, 40, 5, 5, 3), accept: 30 }) },
     { id: 'generous', name: 'Щедрый', desc: 'Предлагает 60, принимает что угодно от 10.',
       play: () => ({ offer: 60, accept: 10 }) },
     { id: 'stubborn', name: 'Упрямый', desc: 'Предлагает 30, а сам принимает только от 45. Часто остаётся ни с чем.',
@@ -651,7 +657,8 @@ function play(ctx) {
     ultimatum: `// Верните { offer, accept }:
 //   offer  — сколько из 100 отдать сопернику, если предлагаете вы;
 //   accept — минимальное предложение, которое вы примете.
-// ctx.state: { iAmProposer, pie, deals: [{ iProposed, offer, threshold, accepted }] }
+// ctx.state: { iAmProposer, pie, deals: [{ iProposed, offer, accepted, threshold? }] }
+//   threshold виден только в сделках, где вы были отвечающим (свой порог).
 function play(ctx) {
   return { offer: 45, accept: 30 };
 }`,
