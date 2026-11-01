@@ -82,7 +82,8 @@
           <div class="panel-title">Боты <span class="comment" id="sel-count"></span><span class="spacer"></span>
             <button class="btn btn-sm" id="sel-all">все</button><button class="btn btn-sm" id="sel-none">никого</button></div>
           <div class="chips" id="bot-chips"></div>
-          <p class="comment" style="margin:14px 0 0">// наведите на бота, чтобы прочитать стратегию · свои боты добавляются в <a href="#/sandbox" style="color:var(--primary)">песочнице</a></p>
+          <div class="bot-info" id="bot-info"></div>
+          <p class="comment" style="margin:14px 0 0">// под чипами — описание каждого выбранного бота · свои боты добавляются в <a href="#/sandbox" style="color:var(--primary)">песочнице</a></p>
         </div>
         <div class="setup-side card card-pad">
           <div class="settings-grid">
@@ -111,6 +112,10 @@
       const bots = UI.botsFor(S.gameId);
       botChips.innerHTML = bots.map((b) => `<span class="chip ${S.selected.has(b.id) ? 'on' : ''} ${b.custom ? 'custom' : ''}" data-bot="${esc(b.id)}" title="${esc(b.desc)}">${b.tag ? `<span class="x">${esc(b.tag)}</span>` : b.custom ? '<span class="x">ваш</span>' : ''}${esc(b.name)}</span>`).join('');
       $('#sel-count', app).textContent = `// выбрано ${S.selected.size} из ${bots.length}`;
+      const chosen = bots.filter((b) => S.selected.has(b.id));
+      $('#bot-info', app).innerHTML = chosen.length
+        ? chosen.map((b) => `<div class="bot-line"><b>${esc(b.name)}</b> — ${esc(b.desc)}</div>`).join('')
+        : '<div class="bot-line">Нажмите на бота, чтобы выбрать его и увидеть описание.</div>';
       const g = GT.getGame(S.gameId);
       $('#rounds', app).value = S.rounds;
       $('#rounds-label', app).textContent = g.unit === 'аукцион' ? 'аукционов в матче' : 'раундов в матче';
@@ -491,15 +496,43 @@
     let T = null;
     let viewers = 0;
     let connected = false;
+    let paused = false;
     app.innerHTML = `<div class="container page">
       <div class="crumbs"><a href="#/">~</a><span>/</span><span>эфир</span></div>
       <div class="page-head"><div><h1 class="page-title">Эфир</h1>
         <p class="page-sub">Сервер круглосуточно проводит турниры команд-ботов. Все зрители видят одно и то же в реальном времени; каждый матч можно открыть и разобрать по раундам.</p></div>
-        <span class="pill" id="live-pill"><span class="dot"></span>подключение…</span></div>
+        <div class="row" style="gap:10px"><button class="btn btn-sm" id="live-toggle" style="display:none"></button>
+        <span class="pill" id="live-pill"><span class="dot"></span>подключение…</span></div></div>
+      <div id="live-paused" class="card card-pad" style="display:none;margin-bottom:16px;border-color:var(--primary-line)"><span class="mono">■ Эфир остановлен.</span> <span class="muted">Новые матчи не считаются, пока эфир не запустят снова. Турниры на «Арене» и в «Турнирах» идут у вас в браузере и останавливаются своей кнопкой «■ Остановить».</span></div>
       <div id="live-out"><div class="empty">⠋ подключаюсь к эфиру…</div></div>
     </div>`;
     const out = $('#live-out', app);
     const pill = $('#live-pill', app);
+    const toggle = $('#live-toggle', app);
+    const pausedBox = $('#live-paused', app);
+    function setPaused(v) {
+      paused = !!v;
+      toggle.style.display = '';
+      toggle.textContent = paused ? '▶ Запустить эфир' : '■ Остановить эфир';
+      pausedBox.style.display = paused ? '' : 'none';
+    }
+    async function control(action, retry) {
+      const token = UI.store.get('adminToken', '');
+      try {
+        const r = await fetch('/api/live/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, token }) });
+        if (r.status === 401 && !retry) {
+          const t = prompt('Токен администратора эфира (LIVE_ADMIN_TOKEN на сервере):');
+          if (!t) return;
+          UI.store.set('adminToken', t);
+          return control(action, true);
+        }
+        const d = await r.json();
+        if (!r.ok) { UI.toast(d.error || 'Не получилось'); return; }
+        setPaused(d.paused);
+        UI.toast(d.paused ? 'Эфир остановлен' : 'Эфир запущен');
+      } catch (e) { UI.toast('Нет связи с сервером'); }
+    }
+    toggle.onclick = () => control(paused ? 'resume' : 'pause');
 
     function adapt(t) {
       const schedule = GT.schedule(t.teams.length, 2, false);
@@ -523,6 +556,7 @@
         const sec = Math.max(0, Math.round((t.nextAt - Date.now()) / 1000));
         return `завершён · следующий через ${sec} с`;
       }
+      if (paused) return 'эфир остановлен';
       return `в эфире · ${viewers} ${viewers === 1 ? 'зритель' : viewers < 5 ? 'зрителя' : 'зрителей'}`;
     };
     const view = tournamentView(out, () => T, {
@@ -546,6 +580,7 @@
       const d = JSON.parse(e.data);
       if (d.type === 'snapshot') {
         viewers = d.viewers || viewers;
+        setPaused(d.paused);
         T = d.tournament ? adapt(d.tournament) : null;
         if (!T) out.innerHTML = '<div class="empty">Эфир готовится — первый турнир начнётся через пару секунд</div>';
         else view.draw();
@@ -563,6 +598,8 @@
         view.draw();
       } else if (d.type === 'viewers') {
         viewers = d.n;
+      } else if (d.type === 'control') {
+        setPaused(d.paused);
       }
       setPill();
     };

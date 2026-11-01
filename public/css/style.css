@@ -243,6 +243,9 @@ body.no-anim .pixels, body.no-anim .ascii { display: none; }
 .bot p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.bot-info { margin-top: 16px; display: grid; gap: 6px; max-height: 320px; overflow-y: auto; padding-right: 4px; }
+.bot-line { font-size: 13px; line-height: 1.5; color: var(--muted); }
+.bot-line b { color: var(--text); font-weight: 600; }
 .chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--bg-2); font-size: 14px; cursor: pointer; user-select: none; transition: border-color var(--dur), background var(--dur), color var(--dur); }
 .chip:hover { border-color: #3a4060; }
 .chip.on { border-color: var(--primary-line); background: var(--primary-soft); color: #ddd6fe; }

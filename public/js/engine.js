@@ -310,6 +310,8 @@
     { id: 'detectives', name: 'Детективы', bots: { matrix: 'detective', travelers: 'slow_descent', public_goods: 'bait', tug_of_war: 'burst', ultimatum: 'greedy', dollar_auction: 'one_shot' } },
     { id: 'gamblers', name: 'Азартные', bots: { matrix: 'joss', travelers: 'cautious', public_goods: 'half', tug_of_war: 'minimal', ultimatum: 'fair', dollar_auction: 'sunk_cost' } },
     { id: 'chaos', name: 'Хаос', bots: { matrix: 'random', travelers: 'random', public_goods: 'random', tug_of_war: 'random', ultimatum: 'random', dollar_auction: 'random_limit' } },
+    { id: 'adaptive', name: 'Адаптивные', bots: { matrix: 'adaptive', travelers: 'adaptive', public_goods: 'adaptive', tug_of_war: 'adaptive', ultimatum: 'adaptive', dollar_auction: 'last_word' } },
+    { id: 'humans', name: 'Человечные', bots: { matrix: 'contrite_tft', travelers: 'holder', public_goods: 'halfway_up', tug_of_war: 'noisy_even', ultimatum: 'random_fair', dollar_auction: 'limit75' } },
     { id: 'nash', name: 'Равновесники', bots: { matrix: 'hard_majority', travelers: 'nash', public_goods: 'decay', tug_of_war: 'even', ultimatum: 'rational', dollar_auction: 'value' } },
   ];
 })(typeof self !== 'undefined' ? self : globalThis);
