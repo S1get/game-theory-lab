@@ -227,7 +227,8 @@
         const ok = offer >= threshold;
         const pay = [0, 0];
         if (ok) { pay[prop] = par.pie - offer; pay[1 - prop] = offer; }
-        for (const p of [0, 1]) s.deals[p].push({ iProposed: p === prop, offer, threshold, accepted: ok });
+        // Предлагающий узнаёт только «принято / отказ»; свой порог знает лишь отвечающий
+        for (const p of [0, 1]) s.deals[p].push(p === prop ? { iProposed: true, offer, accepted: ok } : { iProposed: false, offer, threshold, accepted: ok });
         s.round++;
         return { payoffs: pay, info: { proposer: prop, offer, threshold, ok } };
       },
