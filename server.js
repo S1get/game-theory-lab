@@ -79,7 +79,10 @@ const live = {
   clients: new Set(),
   tournament: null,
   number: 0,
+  // Ручная остановка кнопкой на странице «Эфир» (или LIVE_DISABLED=1 при старте)
+  paused: process.env.LIVE_DISABLED === '1',
 };
+const LIVE_ADMIN_TOKEN = process.env.LIVE_ADMIN_TOKEN || '';
 
 function broadcast(event) {
   const data = `data: ${JSON.stringify(event)}\n\n`;
@@ -92,12 +95,16 @@ function broadcastViewers() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Эфир считается, только пока есть зрители: без них цикл стоит на паузе
-// и не тратит процессор. Первый подключившийся будит его.
+// Эфир считается, только пока есть зрители и он не остановлен вручную:
+// иначе цикл стоит на паузе и не тратит процессор.
 let wakeLive = null;
+const canRun = () => live.clients.size > 0 && !live.paused;
 function waitForViewers() {
-  if (live.clients.size > 0) return Promise.resolve();
+  if (canRun()) return Promise.resolve();
   return new Promise((resolve) => { wakeLive = resolve; });
+}
+function tryWake() {
+  if (wakeLive && canRun()) { const w = wakeLive; wakeLive = null; w(); }
 }
 
 // Каждый эфир — новый набор параметров, чтобы турниры отличались
@@ -167,13 +174,31 @@ function handleLive(req, res) {
     'X-Accel-Buffering': 'no',
   }));
   res.write('retry: 3000\n\n');
-  res.write(`data: ${JSON.stringify({ type: 'snapshot', tournament: live.tournament, viewers: live.clients.size + 1 })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'snapshot', tournament: live.tournament, viewers: live.clients.size + 1, paused: live.paused })}\n\n`);
   live.clients.add(res);
-  if (wakeLive) { const w = wakeLive; wakeLive = null; w(); }
+  tryWake();
   broadcastViewers();
   req.on('close', () => {
     live.clients.delete(res);
     broadcastViewers();
+  });
+}
+
+// Остановка и запуск эфира: POST /api/live/control {"action":"pause"|"resume","token":"…"}
+// Если задан LIVE_ADMIN_TOKEN, без него управлять нельзя.
+function handleLiveControl(req, res) {
+  let body = '';
+  req.on('data', (ch) => { body += ch; if (body.length > 1e4) req.destroy(); });
+  req.on('end', () => {
+    let d = {};
+    try { d = JSON.parse(body || '{}'); } catch (e) { return sendJson(res, 400, { error: 'bad json' }); }
+    if (LIVE_ADMIN_TOKEN && d.token !== LIVE_ADMIN_TOKEN) return sendJson(res, 401, { error: 'нужен токен администратора' });
+    if (d.action !== 'pause' && d.action !== 'resume') return sendJson(res, 400, { error: 'action: pause | resume' });
+    live.paused = d.action === 'pause';
+    console.log(`[live] ${live.paused ? 'остановлен' : 'запущен'} вручную`);
+    broadcast({ type: 'control', paused: live.paused });
+    tryWake();
+    sendJson(res, 200, { paused: live.paused, protected: !!LIVE_ADMIN_TOKEN });
   });
 }
 
@@ -232,12 +257,13 @@ const server = http.createServer((req, res) => {
       ok: true,
       uptimeSec: Math.round((Date.now() - STARTED_AT) / 1000),
       viewers: live.clients.size,
-      paused: live.clients.size === 0, liveTournament: live.tournament ? { id: live.tournament.id, status: live.tournament.status, played: live.tournament.results.length, total: live.tournament.total } : null,
+      paused: live.paused, idle: live.clients.size === 0, controlProtected: !!LIVE_ADMIN_TOKEN, liveTournament: live.tournament ? { id: live.tournament.id, status: live.tournament.status, played: live.tournament.results.length, total: live.tournament.total } : null,
       keepalive: { enabled: keepalive.enabled, intervalMin: keepalive.intervalMin, lastPingAt: keepalive.lastPingAt, lastStatus: keepalive.lastStatus },
     });
   }
+  if (p === '/api/live/control' && req.method === 'POST') return handleLiveControl(req, res);
   if (p === '/api/live') return handleLive(req, res);
-  if (p === '/api/live/state') return sendJson(res, 200, { tournament: live.tournament, viewers: live.clients.size });
+  if (p === '/api/live/state') return sendJson(res, 200, { tournament: live.tournament, viewers: live.clients.size, paused: live.paused });
   if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed');
   serveStatic(req, res, p);
